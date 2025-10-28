@@ -1,0 +1,219 @@
+🎯 HNG DevOps Intern Stage 2 – Blue/Green Deployment with Nginx
+
+Name: Oluwayemisi Okunrounmu
+Email: yemmmyc@hotmail.com
+
+GitHub: https://github.com/Yemmmyc
+
+HNG Stage: 13
+
+Project: Blue/Green Node.js Service Behind Nginx with Auto-Failover & Manual Toggle
+Stack: Docker, Docker Compose, Nginx
+
+🌟 Overview
+
+This project demonstrates a Blue/Green deployment pattern for a Node.js application using Docker Compose. The setup includes:
+
+Blue (Active) and Green (Backup) Node.js services
+
+Nginx acting as a reverse proxy and traffic controller
+
+Automatic failover in case the active service fails
+
+Manual toggle of traffic between environments via a script
+
+Forwarding of custom headers X-App-Pool and X-Release-Id
+
+Goal: Ensure zero downtime and 100% request success during failover, as required by the HNG Stage 2 grader.
+
+🏗 Architecture
+                ┌───────────────┐
+                │   Client      │
+                └──────┬────────┘
+                       │ HTTP Requests
+                       ▼
+                ┌───────────────┐
+                │     Nginx     │
+                │ (Port 8080)   │
+                └──────┬────────┘
+        ┌─────────────┴─────────────┐
+        │                           │
+ ┌───────────────┐           ┌───────────────┐
+ │   Blue App    │           │   Green App   │
+ │ (Active)      │           │ (Backup)      │
+ │ Port 8081     │           │ Port 8082     │
+ └───────────────┘           └───────────────┘
+
+⚙️ Features
+
+Baseline Traffic: All requests go to Blue by default
+
+Auto-Failover: Nginx retries requests on Green if Blue fails (timeout, error, or 5xx)
+
+Manual Switch: Run ./switch.sh [blue|green] to manually toggle traffic
+
+Custom Headers Forwarded:
+
+X-App-Pool: blue|green
+
+X-Release-Id: <version>
+
+📂 File Structure
+blue-green-app/
+├─ docker-compose.yml
+├─ .env
+├─ switch.sh
+└─ nginx/
+   ├─ nginx.conf
+   └─ nginx.conf.template
+
+
+docker-compose.yml – Defines Blue, Green, and Nginx services, ports, and environment variables
+
+.env – Configurable environment variables for grader
+
+switch.sh – Bash script to toggle traffic between Blue and Green
+
+nginx/nginx.conf.template – Template for Nginx upstream configuration
+
+nginx/nginx.conf – Generated from the template based on active pool
+
+⚡ Prerequisites
+
+Docker & Docker Compose installed
+
+Ubuntu / Linux (or WSL for Windows users)
+
+Internet access to pull the Node.js images
+
+📝 Setup Instructions
+1️⃣ Create .env File
+# .env
+BLUE_IMAGE=yimikaade/wonderful:devops-stage-two
+GREEN_IMAGE=yimikaade/wonderful:devops-stage-two
+BLUE_PORT=8081
+GREEN_PORT=8082
+NGINX_PORT=8080
+RELEASE_ID_BLUE=v1
+RELEASE_ID_GREEN=v2
+ACTIVE_POOL=blue
+
+2️⃣ Start Services
+docker compose up -d
+
+3️⃣ Verify Baseline (Blue Active)
+curl -i http://localhost:8080/version
+
+
+Expected headers:
+
+X-App-Pool: blue
+X-Release-Id: v1
+
+🔁 Manual Switch Between Pools
+# Switch to Green
+./switch.sh green
+
+# Switch back to Blue
+./switch.sh blue
+
+
+Updates Nginx configuration and reloads it without downtime
+
+Confirm headers with:
+
+curl -i http://localhost:8080/version
+
+💥 Chaos Testing / Auto-Failover
+Start Chaos on Active App
+curl -X POST http://localhost:8081/chaos/start?mode=error
+
+
+Nginx automatically retries the backup (Green) if Blue fails:
+
+curl -i http://localhost:8080/version
+
+Stop Chaos
+curl -X POST http://localhost:8081/chaos/stop
+
+
+Notes:
+
+During chaos, all requests remain 200 OK if failover works
+
+Headers show X-App-Pool of the service handling the request
+
+⚙️ Nginx Configuration Highlights
+
+Upstream Block
+
+upstream backend {
+    server app_green:3000 max_fails=3 fail_timeout=10s;
+    server app_blue:3000 backup;
+}
+
+
+Main Route & Version Endpoint
+
+location / {
+    proxy_pass http://backend;
+    proxy_set_header X-App-Pool $upstream_http_x_app_pool;
+    proxy_set_header X-Release-Id $upstream_http_x_release_id;
+}
+
+
+Retry & Timeout Config
+
+proxy_connect_timeout 3s;
+proxy_read_timeout 5s;
+proxy_next_upstream error timeout invalid_header http_502 http_503 http_504;
+proxy_next_upstream_tries 2;
+
+✅ Points Checklist
+Requirement	Status
+Blue & Green Node.js images	✅ Done
+Expose /version, /healthz, /chaos endpoints	✅ Done
+Nginx reverse proxy on port 8080	✅ Done
+Auto-failover on Blue failure	✅ Done
+Forward X-App-Pool & X-Release-Id headers	✅ Done
+Manual switch with script	✅ Done
+Parameterized via .env	✅ Done
+Docker Compose orchestration	✅ Done
+Zero downtime, all requests succeed during failover	✅ Done
+🎉 Verification
+# Baseline
+curl -i http://localhost:8080/version
+
+# Manual switch
+./switch.sh green
+curl -i http://localhost:8080/version
+
+# Chaos failover
+curl -X POST http://localhost:8081/chaos/start?mode=error
+curl -i http://localhost:8080/version
+curl -X POST http://localhost:8081/chaos/stop
+
+
+All tests return 200 OK with correct headers for the active pool.
+
+🖼 Visual Summary
+Client → Nginx (8080) → Blue (8081) / Green (8082)
+                 ↘ Auto-failover if Blue fails
+
+
+
+Submission Notes
+
+For Part A of the HNG DevOps Task:
+
+This repo contains all required files:
+
+docker-compose.yml
+
+.env.example
+
+README.md (this file)
+
+nginx/nginx.conf.template
+
+Optional: For insight into the thought process and implementation decisions, see DECISION.md.

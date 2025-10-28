@@ -1,0 +1,29 @@
+services:
+  app_blue:
+    image: ${BLUE_IMAGE}
+    container_name: app_blue
+    ports:
+      - "${BLUE_PORT}:3000"
+    environment:
+      - RELEASE_ID=${RELEASE_ID_BLUE}
+      - APP_POOL=blue
+
+  app_green:
+    image: ${GREEN_IMAGE}
+    container_name: app_green
+    ports:
+      - "${GREEN_PORT}:3000"
+    environment:
+      - RELEASE_ID=${RELEASE_ID_GREEN}
+      - APP_POOL=green
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    ports:
+      - "${NGINX_PORT}:80"            # public entrypoint: http://localhost:8080
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - app_blue
+      - app_green

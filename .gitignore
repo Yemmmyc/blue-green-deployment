@@ -1,0 +1,27 @@
+# Node modules (if any)
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS / Editor files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*.sublime-workspace
+*.sublime-project
+.vscode/
+
+# Docker
+docker-compose.override.yml
+.env
+*.env
+*.tmp
+
+# Nginx generated config
+nginx/nginx.conf
+
+# Temporary files
+*.tmp
